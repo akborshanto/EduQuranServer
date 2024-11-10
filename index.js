@@ -2,12 +2,14 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const bcrypt = require('bcryptjs');
+const bodyParser = require('body-parser');
 
 // Create an Express app
 const app = express();
 
 // MongoDB URI (directly defined without .env)
-const uri = "mongodb+srv://eduquran:2jaVknZQEuEwKBIw@cluster1.phei2xm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
+const uri = "mongodb+srv://SchoolMadrasha:JMIILgbEfxYWEXv3@cluster1.phei2xm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1";
 
 // Set the server port (directly defined)
 const PORT = 5001; 
@@ -15,6 +17,7 @@ const PORT = 5001;
 // Set up middleware
 app.use(express.json()); // For parsing JSON request bodies
 app.use(cors()); // Enable CORS for all routes
+app.use(bodyParser.json());
 
 // Create a MongoClient with the Stable API version
 const client = new MongoClient(uri, {
@@ -37,36 +40,49 @@ async function connectToMongoDB() {
 }
 
 // Get reference to the database and collection
-const db = client.db('EduQuran'); // Use your database name here
-const postsCollection = db.collection('posts'); // Reference to the 'posts' collection
+const db = client.db('SchoolManagement'); // Use your database name here
+const userCollection = db.collection('usercollection'); // Reference to the 'usercollection' collection
 
 // Basic route to test the server
 app.get('/', (req, res) => {
   res.send('Hello from Express with MongoDB!');
 });
 
-// Test MongoDB connection with ping
-// app.js (Backend)
-
-
-// Route to create a new post in the 'posts' collection
+// Route to create a new user in the 'usercollection' collection
 app.post('/api/posts', async (req, res) => {
-  const { title, content, likes } = req.body; // Destructure the post data from request body
-  console.log(title, content, likes); // Log to check if you’re getting the right data
+  // Destructure data from request body
+  const { name, email, uploadedImageUrl, password } = req.body;
+
+  // Check if the required fields are provided
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email, and password are required.' });
+  }
 
   try {
-    // Insert the new post into the 'posts' collection
-    const result = await postsCollection.insertOne({
-      title,
-      content,
-      likes: likes || 0, // Default to 0 if likes is not provided
-    });
+    // Check if the email already exists in the collection
+    const existingUser = await userCollection.findOne({ email });
 
-    // Send the result back to the client
-    res.status(201).json(result);  // Respond with the result of the insert
+    if (existingUser) {
+      // If email exists, return an error message
+      return res.status(400).json({ message: 'Email is already taken.' });
+    }
+
+    // Hash the password before saving it
+    const saltRounds = 10;  // You can adjust the number of rounds (higher = more secure)
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Insert the user data into the 'usercollection' collection
+    const user = { name, email, uploadedImageUrl, password: hashedPassword };
+    const result = await userCollection.insertOne(user);
+
+    // Return a success response
+    res.status(201).json({
+      message: 'User created successfully!',
+      userId: result.insertedId,
+    });
   } catch (error) {
-    console.error("Error inserting post:", error);
-    res.status(500).json({ error: 'Failed to create post' });
+    console.error('Error processing request:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
