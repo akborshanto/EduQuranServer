@@ -48,6 +48,61 @@ app.get('/', (req, res) => {
   res.send('Hello from Express with MongoDB!');
 });
 
+
+//user nodemailer 
+const sendEmail=(emailAddress,emailData)=>{
+
+  const transporter = nodemailer.createTransport({
+    service:'gmail',
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for port 465, false for other ports
+    auth: {
+      user: "akborshanto11111@gmail.com",
+      pass: "xlwqyrkxhvhsxgqp",
+    },
+  });
+  
+
+
+  //veryrify// verify connection configuration
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log(error);
+  } else {
+    console.log("Server is ready to take our messages");
+  }
+});
+  const mailBody={
+
+
+    
+      from: '"eduquran" <akborshanto11111@gmail.com>', // sender address
+      to: emailAddress, // list of receivers
+      subject:emailData.suject, // Subject line
+      text: "Hello world?", // plain text body
+      html: emailData.message, // html body
+    
+  }
+
+    transporter.sendMail(mailBody,(error,info)=>{
+
+if(error){
+  console.log(error)
+}else{
+  console.log('email send: + ',info.response)
+}
+
+
+
+   });
+
+
+
+}
+
+
+
 // Route to create a new user in the 'usercollection' collection
 app.post('/api/posts', async (req, res) => {
   // Destructure data from request body
@@ -74,7 +129,12 @@ app.post('/api/posts', async (req, res) => {
     // Insert the user data into the 'usercollection' collection
     const user = { name, email, uploadedImageUrl, password: hashedPassword };
     const result = await userCollection.insertOne(user);
+//send email
+sendEmail(email,{
 
+  subject:"Successfully created",
+message:"You hav esuccessfulll"
+})
     // Return a success response
     res.status(201).json({
       message: 'User created successfully!',
